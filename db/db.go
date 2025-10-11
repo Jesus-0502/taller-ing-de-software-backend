@@ -8,14 +8,14 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// NewDB crea la conexion a la base de datos y realiza la migracion basica (creación de tabla users)
+// NewDB crea la conexion a la base de datos y realiza la migracion basica (creacion de tabla users)
 func NewDB(dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", dataSourceName)
 	if err != nil {
 		return nil, fmt.Errorf("error abriendo la base de datos: %w", err)
 	}
 
-	// Recomendado: limita conexiones simultáneas (SQLite no es para cargas altas)
+	// limita conexiones simultáneas (SQLite no es para cargas altas)
 	// db.SetMaxOpenConns(1)
 	// db.SetMaxIdleConns(1)
 
