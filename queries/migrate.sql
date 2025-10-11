@@ -1,11 +1,10 @@
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT NOT NULL,
 		email TEXT NOT NULL UNIQUE,
 		password_hash TEXT NOT NULL,
-		role TEXT NOT NULL DEFAULT 'user'
+		role TEXT NOT NULL DEFAULT 'user',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
 CREATE TABLE IF NOT EXISTS bearer_tokens (
@@ -21,4 +20,4 @@ CREATE TABLE IF NOT EXISTS bearer_tokens (
 );
 
 INSERT INTO users (name, email, password_hash, role)
-VALUES ('root', 'root@example.com', '123456', 'admin');
+VALUES ('root', 'root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 'admin');
