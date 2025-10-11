@@ -61,14 +61,31 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := GenerateJWT(u.ID, u.Email, u.Role)
+	if err != nil {
+		http.Error(w, "Error generando token", http.StatusInternalServerError)
+		return
+	}
+
+	stmtInsert := `
+		INSERT INTO bearer_tokens (token, user_id, expires_at)
+		VALUES (?, ?, DATETIME(CURRENT_TIMESTAMP, '+1 day'))
+	`
+	_, err = h.db.Exec(stmtInsert, token, u.ID)
+	if err != nil {
+		http.Error(w, "Error guardando token", http.StatusInternalServerError)
+		return
+	}
 	// Si todo está bien, responde con los datos del usuario
 	resp := struct {
+		Token     string    `json:"token"`
 		ID        int64     `json:"id"`
 		Name      string    `json:"name"`
 		Email     string    `json:"email"`
 		Role      string    `json:"role"`
 		CreatedAt time.Time `json:"created_at"`
 	}{
+		Token:     token,
 		ID:        u.ID,
 		Name:      u.Name,
 		Email:     u.Email,

@@ -8,19 +8,14 @@ import (
 
 var jwtKey = []byte("tu_clave_super_secreta") // cámbiala por una clave fuerte
 
-// Estructura del payload
-type Claims struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
-	jwt.RegisteredClaims
-}
-
 // Generar token JWT
-func GenerateJWT(userID int64, role string) (string, error) {
+func GenerateJWT(userID int64, email string, role string) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID, // ahora almacena int64 directamente
+		"user_id": userID,
+		"email":   email,
 		"role":    role,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+		"exp":     time.Now().Add(24 * time.Hour).Unix(), // expira en 24 horas
+		"iat":     time.Now().Unix(),                     // emitido ahora
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

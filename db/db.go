@@ -56,9 +56,6 @@ func migrate(db *sql.DB) error {
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		-- Si el usuario se elimina, sus tokens también
 	);
-
-	INSERT INTO users (name, email, password_hash, role)
-	VALUES ('root', 'root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 'admin');
 	`
 	_, err := db.Exec(schema)
 	return err
