@@ -12,4 +12,5 @@ func RegisterProjectRoutes(router *mux.Router, db *sql.DB) {
 
 	router.HandleFunc("/proyectos", handler.HandleListProjects).Methods("GET")
 	router.HandleFunc("/proyectos", handler.HandleCreateProject).Methods("POST")
+	router.HandleFunc("/proyectos/search", handler.HandleProjectQuery).Methods("GET")
 }
