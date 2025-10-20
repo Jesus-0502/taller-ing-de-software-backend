@@ -23,6 +23,48 @@ func NewUserHandler(db *sql.DB) *UserHandler {
 	return &UserHandler{DB: db}
 }
 
+func (h *UserHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
+
+	// Consulta a la base de datos
+	rows, err := h.DB.Query("SELECT id, name, email, role, created_at FROM users")
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error interno del servidor")
+		return
+	}
+	defer rows.Close()
+
+	var users []models.User
+
+	// Iterar sobre los resultados
+	for rows.Next() {
+		var u models.User
+		var createdAtStr sql.NullString // temporal para leer la fecha como string
+		layout := "2006-01-02 15:04:05"
+
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &createdAtStr); err != nil {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error leyendo los datos")
+			return
+		}
+
+		// Parsear string a time.Time
+		u.CreatedAt, _ = time.Parse(layout, createdAtStr.String)
+		// if err != nil {
+		// 	utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error parseando fecha")
+		// 	return
+		// }
+
+		users = append(users, u)
+	}
+
+	// Verificar errores en la iteración
+	if err := rows.Err(); err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error iterando resultados")
+		return
+	}
+
+	utils.SendJSONSuccess(w, users)
+}
+
 func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var input models.LoginInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {

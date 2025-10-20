@@ -25,14 +25,14 @@ func NewAPIServer(addr string, db *sql.DB) *APIServer {
 func (s *APIServer) Run() error {
 	router := mux.NewRouter()
 
-	// 👉 Rutas base de tu API
+	// Rutas base de tu API
 	apiRouter := router.PathPrefix("/api").Subrouter()
 
-	// 👉 Registrar rutas específicas
+	// Registrar rutas específicas
 	routes.RegisterUserRoutes(apiRouter, s.DB)
-	//routes.RegisterProjectRoutes(apiRouter, s.DB) // cuando lo tengas
+	routes.RegisterProjectRoutes(apiRouter, s.DB)
 
-	// 👉 Middlewares globales
+	// Middlewares globales
 	handler := middleware.CorsMiddleware(router)
 
 	log.Println("Servidor corriendo en", s.Addr)
