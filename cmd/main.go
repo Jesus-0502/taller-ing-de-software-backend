@@ -1,22 +1,21 @@
 package main
 
 import (
+	"farmlands-backend/api"
+	"farmlands-backend/db"
 	"log"
-	"taller-ing-de-software-backend/cmd/api"
-	"taller-ing-de-software-backend/db"
 )
 
 func main() {
-
-	// Crea la conexión a la base de datos y realiza migración
+	// Crear la conexión con la base de datos
 	database, err := db.NewDB("app.db")
 	if err != nil {
-		log.Fatalf("No se pudo conectar a la base de datos: %v", err)
+		log.Fatal(err)
 	}
 
+	// Crear y lanzar el servidor
 	server := api.NewAPIServer(":8080", database)
 	if err := server.Run(); err != nil {
-		log.Fatal()
+		log.Fatal(err)
 	}
-
 }
