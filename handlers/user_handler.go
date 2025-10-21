@@ -8,11 +8,9 @@ import (
 	"farmlands-backend/models"
 	"farmlands-backend/utils"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,7 +26,7 @@ func NewUserHandler(db *sql.DB) *UserHandler {
 func (h *UserHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 
 	// Consulta a la base de datos
-	rows, err := h.DB.Query("SELECT id, name, email, role, created_at FROM users")
+	rows, err := h.DB.Query("SELECT id, name, lastname, username, email, role FROM users")
 	if err != nil {
 		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error interno del servidor")
 		return
@@ -40,16 +38,13 @@ func (h *UserHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	// Iterar sobre los resultados
 	for rows.Next() {
 		var u models.User
-		var createdAtStr sql.NullString // temporal para leer la fecha como string
-		layout := "2006-01-02 15:04:05"
 
-		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &createdAtStr); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Lastname, &u.Username, &u.Email, &u.Role); err != nil {
 			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error leyendo los datos")
 			return
 		}
 
 		// Parsear string a time.Time
-		u.CreatedAt, _ = time.Parse(layout, createdAtStr.String)
 		// if err != nil {
 		// 	utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error parseando fecha")
 		// 	return
@@ -84,21 +79,18 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		utils.SendJSONError(w, http.StatusBadRequest, "MISSING_FIELDS", "Email y contraseña requeridos")
 		return
 	}
-
-	stmt := `SELECT id, name, email, password_hash, role, created_at FROM users WHERE email = ? LIMIT 1`
+	stmt := `SELECT id, name, lastname, username, email, password_hash, role FROM users WHERE email = ? LIMIT 1`
 	var u models.User
-	var createdAtStr string
 
 	email := strings.ToLower(strings.TrimSpace(input.Email))
-	log.Println("Email recibido:", input.Email, "| Email limpio:", email, ".")
 
 	err := h.DB.QueryRow(stmt, email).Scan(
-		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &createdAtStr,
+		&u.ID, &u.Name, &u.Lastname, &u.Username, &u.Email, &u.PasswordHash, &u.Role,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// http.Error(w, "Credenciales incorrectas", http.StatusUnauthorized)
-			utils.SendJSONError(w, http.StatusUnauthorized, "USER_NOT_FOUND", "Credenciales incorrectas")
+			utils.SendJSONError(w, http.StatusUnauthorized, "USER_NOT_FOUND", "Usuario no encontrado")
 			return
 		}
 		// http.Error(w, "Error interno", http.StatusInternalServerError)
@@ -106,11 +98,9 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		// return
 	}
 
-	u.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
-
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.Password)); err != nil {
 		// http.Error(w, "Error: Credenciales incorrectas", http.StatusUnauthorized)
-		utils.SendJSONError(w, http.StatusUnauthorized, "INVALID_PASSWORD", "Credenciales incorrectas")
+		utils.SendJSONError(w, http.StatusUnauthorized, "INVALID_PASSWORD", "Contraseña incorrecta")
 		return
 	}
 
@@ -196,18 +186,15 @@ func (h *UserHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 
 	// === Insertar nuevo usuario ===
 	stmt := `
-		INSERT INTO users (name, lastname, username, email, password_hash, role, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO users (name, lastname, username, email, password_hash, role)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
 	role := input.Role
 	if role == "" {
 		role = "user"
 	}
 
-	layout := "2006-01-02"
-	createdAt := time.Now().Format(layout)
-
-	res, err := h.DB.Exec(stmt, input.Name, input.Lastname, input.Username, input.Email, string(hash), role, createdAt)
+	res, err := h.DB.Exec(stmt, input.Name, input.Lastname, input.Username, input.Email, string(hash), role)
 	if err != nil {
 		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error al registrar usuario")
 		return
@@ -215,13 +202,12 @@ func (h *UserHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 
 	id, _ := res.LastInsertId()
 	user := models.User{
-		ID:        id,
-		Name:      input.Name,
-		Lastname:  input.Lastname,
-		Username:  input.Username,
-		Email:     input.Email,
-		Role:      role,
-		CreatedAt: time.Now(),
+		ID:       id,
+		Name:     input.Name,
+		Lastname: input.Lastname,
+		Username: input.Username,
+		Email:    input.Email,
+		Role:     role,
 	}
 
 	utils.SendJSONSuccess(w, user)
@@ -255,6 +241,51 @@ func (h *UserHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONSuccess(w, "Usuario eliminado correctamente")
+}
+
+func (h *UserHandler) HandleUserQuery(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q") // texto buscado
+
+	var rows *sql.Rows
+	var err error
+
+	if query == "" {
+		rows, err = h.DB.Query(`
+			SELECT id, name, lastname, username, email, role, password_hash
+			FROM users
+		`)
+	} else {
+		pattern := "%" + query + "%"
+		rows, err = h.DB.Query(`
+			SELECT id, name, lastname, username, email, role, password_hash
+			FROM users
+			WHERE UPPER(name) LIKE UPPER(?)
+			   OR UPPER(lastname) LIKE UPPER(?)
+			   OR UPPER(username) LIKE UPPER(?)
+		`, pattern, pattern, pattern)
+	}
+
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error en la búsqueda")
+		return
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.ID, &u.Name, &u.Lastname, &u.Username, &u.Email, &u.Role, &u.PasswordHash); err != nil {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error leyendo resultados")
+			return
+		}
+		users = append(users, u)
+	}
+
+	if users == nil {
+		users = []models.User{}
+	}
+
+	utils.SendJSONSuccess(w, users)
 }
 
 func contains(s, sub string) bool {

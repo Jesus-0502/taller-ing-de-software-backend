@@ -9,8 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user',
-    created_at TEXT
+    role TEXT NOT NULL DEFAULT 'user'
 );
 
 -- =============================================
@@ -57,3 +56,4 @@ CREATE TABLE IF NOT EXISTS user_projects (
 -- =============================================
 INSERT INTO users (name, lastname, username, email, password_hash, role)
 VALUES ('root', 'root', 'root','root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 'admin');
+	
