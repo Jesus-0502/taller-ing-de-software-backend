@@ -5,6 +5,8 @@
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    lastname TEXT NOT NULL,
+    username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
@@ -53,5 +55,5 @@ CREATE TABLE IF NOT EXISTS user_projects (
 -- =============================================
 -- USUARIO ADMINISTRADOR INICIAL
 -- =============================================
-INSERT INTO users (name, email, password_hash, role)
-VALUES ('root', 'root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 'admin');
+INSERT INTO users (name, lastname, username, email, password_hash, role)
+VALUES ('root', 'root', 'root','root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 'admin');

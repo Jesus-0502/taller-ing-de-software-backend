@@ -1,14 +1,16 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"farmlands-backend/middleware"
 	"farmlands-backend/models"
 	"farmlands-backend/utils"
+	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -60,6 +62,10 @@ func (h *UserHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	if err := rows.Err(); err != nil {
 		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error iterando resultados")
 		return
+	}
+
+	if users == nil {
+		users = []models.User{}
 	}
 
 	utils.SendJSONSuccess(w, users)
@@ -128,38 +134,82 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	var input models.CreateUserInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
 		return
 	}
 
-	if input.Name == "" || input.Email == "" || len(input.Password) < 6 {
-		http.Error(w, "Datos inválidos", http.StatusBadRequest)
+	// === Validaciones básicas ===
+	if input.Name == "" || input.Lastname == "" || input.Username == "" || input.Email == "" || len(input.Password) < 6 {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_DATA", "Todos los campos son obligatorios y la contraseña debe tener al menos 6 caracteres")
 		return
 	}
 
+	// === Validar formato de username ===
+	validUsername := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	if !validUsername.MatchString(input.Username) {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_USERNAME", "El nombre de usuario solo puede contener letras, números y guiones bajos")
+		return
+	}
+
+	// === Validar formato de lastname ===
+	validLastname := regexp.MustCompile(`^[a-zA-ZÀ-ÿ\s]+$`)
+	if !validLastname.MatchString(input.Lastname) {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_LASTNAME", "El apellido solo puede contener letras y espacios")
+		return
+	}
+
+	// === Verificación de duplicados ===
+	var userExists, emailExists bool
+
+	// Verificar username
+	err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)`, input.Username).Scan(&userExists)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error verificando nombre de usuario")
+		return
+	}
+
+	// Verificar email
+	err = h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)`, input.Email).Scan(&emailExists)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error verificando correo electrónico")
+		return
+	}
+
+	// === Responder según el tipo de duplicado encontrado ===
+	if userExists && emailExists {
+		utils.SendJSONError(w, http.StatusConflict, "USER_AND_EMAIL_EXIST", "El nombre de usuario y el correo electrónico ya existen")
+		return
+	} else if userExists {
+		utils.SendJSONError(w, http.StatusConflict, "USERNAME_EXISTS", "El nombre de usuario ya está en uso")
+		return
+	} else if emailExists {
+		utils.SendJSONError(w, http.StatusConflict, "EMAIL_EXISTS", "El correo electrónico ya está registrado")
+		return
+	}
+
+	// === Hashear contraseña ===
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Error al hashear contraseña", http.StatusInternalServerError)
+		utils.SendJSONError(w, http.StatusInternalServerError, "HASH_ERROR", "Error al hashear la contraseña")
 		return
 	}
 
+	// === Insertar nuevo usuario ===
 	stmt := `
-	INSERT INTO users (name, email, password_hash, role, created_at)
-	VALUES (?, ?, ?, ?, ?)
+		INSERT INTO users (name, lastname, username, email, password_hash, role, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 	role := input.Role
 	if role == "" {
 		role = "user"
 	}
 
-	createdAt := time.Now().Format("2006-01-02 15:04:05")
-	res, err := h.DB.Exec(stmt, input.Name, input.Email, string(hash), role, createdAt)
+	layout := "2006-01-02"
+	createdAt := time.Now().Format(layout)
+
+	res, err := h.DB.Exec(stmt, input.Name, input.Lastname, input.Username, input.Email, string(hash), role, createdAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) || (err.Error() != "" && (contains(err.Error(), "UNIQUE") || contains(err.Error(), "unique"))) {
-			http.Error(w, "El email ya está registrado", http.StatusConflict)
-			return
-		}
-		http.Error(w, "Error al registrar usuario", http.StatusInternalServerError)
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error al registrar usuario")
 		return
 	}
 
@@ -167,13 +217,44 @@ func (h *UserHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	user := models.User{
 		ID:        id,
 		Name:      input.Name,
+		Lastname:  input.Lastname,
+		Username:  input.Username,
 		Email:     input.Email,
 		Role:      role,
 		CreatedAt: time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	utils.SendJSONSuccess(w, user)
+}
+
+func (h *UserHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
+
+	bodyBytes, _ := io.ReadAll(r.Body)
+
+	var input struct {
+		ID int64 `json:"id"`
+	}
+
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
+		return
+	}
+
+	res, err := h.DB.Exec("DELETE FROM users WHERE id = ?", input.ID)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error eliminando proyecto")
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		utils.SendJSONError(w, http.StatusNotFound, "NOT_FOUND", "Usuario no encontrado")
+		return
+	}
+
+	utils.SendJSONSuccess(w, "Usuario eliminado correctamente")
 }
 
 func contains(s, sub string) bool {
