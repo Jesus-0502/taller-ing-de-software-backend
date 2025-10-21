@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"farmlands-backend/models"
 	"farmlands-backend/utils"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -90,6 +92,9 @@ func (h *ProjectHandler) HandleListProjects(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	if projects == nil {
+		projects = []models.Project{}
+	}
 	utils.SendJSONSuccess(w, projects)
 }
 
@@ -124,5 +129,39 @@ func (h *ProjectHandler) HandleProjectQuery(w http.ResponseWriter, r *http.Reque
 		projects = append(projects, p)
 	}
 
+	if projects == nil {
+		projects = []models.Project{}
+	}
+
 	utils.SendJSONSuccess(w, projects)
+}
+
+func (h *ProjectHandler) HandleDeleteProject(w http.ResponseWriter, r *http.Request) {
+
+	bodyBytes, _ := io.ReadAll(r.Body)
+
+	var input struct {
+		ID int64 `json:"id"`
+	}
+
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
+		return
+	}
+
+	res, err := h.DB.Exec("DELETE FROM projects WHERE id = ?", input.ID)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error eliminando proyecto")
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		utils.SendJSONError(w, http.StatusNotFound, "NOT_FOUND", "Proyecto no encontrado")
+		return
+	}
+
+	utils.SendJSONSuccess(w, map[string]string{"message": "Proyecto eliminado correctamente"})
 }
