@@ -44,7 +44,7 @@ func (h *ProjectHandler) HandleCreateProject(w http.ResponseWriter, r *http.Requ
 
 	stmt := `
 		INSERT INTO projects (descripcion, fecha_inicio, fecha_cierre, estado, created_at)
-		VALUES (?, ?, ?, 'abierto', ?)
+		VALUES (?, ?, ?, 'Habilitado', ?)
 	`
 	createdAt := time.Now().Format(layout)
 
@@ -61,7 +61,7 @@ func (h *ProjectHandler) HandleCreateProject(w http.ResponseWriter, r *http.Requ
 		Descripcion: input.Descripcion,
 		FechaInicio: input.FechaInicio,
 		FechaCierre: input.FechaCierre,
-		Estado:      "abierto",
+		Estado:      "Habilitado",
 		CreatedAt:   createdAt,
 	}
 
@@ -239,17 +239,6 @@ func (h *ProjectHandler) HandleUpdateProjectStatus(w http.ResponseWriter, r *htt
 
 	if input.ID == 0 || input.Estado == "" {
 		utils.SendJSONError(w, http.StatusBadRequest, "MISSING_FIELDS", "El 'id' y 'estado' son obligatorios")
-		return
-	}
-
-	// Validar que el estado sea uno permitido
-	validStates := map[string]bool{
-		"abierto":  true,
-		"cerrado":  true,
-		"en pausa": true,
-	}
-	if !validStates[input.Estado] {
-		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_STATE", "Estado no válido")
 		return
 	}
 
