@@ -7,6 +7,7 @@ import (
 	"farmlands-backend/middleware"
 	"farmlands-backend/models"
 	"farmlands-backend/utils"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -295,4 +296,98 @@ func contains(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
+	var input models.User
+
+	// 1️⃣ Decodificar JSON de entrada
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
+		return
+	}
+
+	// Validar que venga el ID
+	if input.ID == 0 {
+		utils.SendJSONError(w, http.StatusBadRequest, "MISSING_ID", "El ID del usuario es obligatorio")
+		return
+	}
+
+	// 2️⃣ Buscar usuario actual en BD
+	var dbUser models.User
+	err := h.DB.QueryRow(`
+		SELECT id, name, lastname, username, email, password_hash, role
+		FROM users WHERE id = ?`, input.ID,
+	).Scan(
+		&dbUser.ID, &dbUser.Name, &dbUser.Lastname, &dbUser.Username,
+		&dbUser.Email, &dbUser.PasswordHash, &dbUser.Role,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.SendJSONError(w, http.StatusNotFound, "USER_NOT_FOUND", "Usuario no encontrado")
+			return
+		}
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error consultando usuario")
+		return
+	}
+
+	// 3️⃣ Comparar y construir dinámicamente la sentencia UPDATE
+	updateFields := []string{}
+	args := []interface{}{}
+
+	if input.Name != "" && input.Name != dbUser.Name {
+		updateFields = append(updateFields, "name = ?")
+		args = append(args, input.Name)
+	}
+	if input.Lastname != "" && input.Lastname != dbUser.Lastname {
+		updateFields = append(updateFields, "lastname = ?")
+		args = append(args, input.Lastname)
+	}
+	if input.Username != "" && input.Username != dbUser.Username {
+		updateFields = append(updateFields, "username = ?")
+		args = append(args, input.Username)
+	}
+	if input.Email != "" && input.Email != dbUser.Email {
+		updateFields = append(updateFields, "email = ?")
+		args = append(args, input.Email)
+	}
+	if input.Role != "" && input.Role != dbUser.Role {
+		updateFields = append(updateFields, "role = ?")
+		args = append(args, input.Role)
+	}
+
+	// 4️⃣ Si no hay cambios, devolver mensaje
+	if len(updateFields) == 0 {
+		utils.SendJSONSuccess(w, map[string]string{"message": "No se realizaron cambios"})
+		return
+	}
+
+	// 5️⃣ Ejecutar actualización dinámica
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = ?", strings.Join(updateFields, ", "))
+	args = append(args, input.ID)
+
+	_, err = h.DB.Exec(query, args...)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_UPDATE_ERROR", "Error actualizando usuario")
+		return
+	}
+
+	// 6️⃣ Devolver usuario actualizado (merge entre original y cambios)
+	if input.Name != "" {
+		dbUser.Name = input.Name
+	}
+	if input.Lastname != "" {
+		dbUser.Lastname = input.Lastname
+	}
+	if input.Username != "" {
+		dbUser.Username = input.Username
+	}
+	if input.Email != "" {
+		dbUser.Email = input.Email
+	}
+	if input.Role != "" {
+		dbUser.Role = input.Role
+	}
+
+	utils.SendJSONSuccess(w, dbUser)
 }

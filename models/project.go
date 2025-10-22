@@ -10,6 +10,11 @@ type Project struct {
 	CreatedAt   string `json:"created_at"`
 }
 
+type ProjectIdentification struct {
+	ID          int64  `json:"id"`
+	Descripcion string `json:"descripcion"`
+}
+
 // CreateProjectInput representa los datos necesarios para crear un proyecto
 type CreateProjectInput struct {
 	Descripcion string `json:"descripcion"`

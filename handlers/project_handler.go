@@ -393,12 +393,11 @@ func (h *ProjectHandler) HandleGetAvailableProjectsForUser(w http.ResponseWriter
 	}
 	defer rows.Close()
 
-	var proyectos []models.Project
+	var proyectos []models.ProjectIdentification
 
 	for rows.Next() {
-		var p models.Project
-		var fechaInicio, fechaCierre, createdAt string
-		if err := rows.Scan(&p.ID, &p.Descripcion, &fechaInicio, &fechaCierre, &p.Estado, &createdAt); err != nil {
+		var p models.ProjectIdentification
+		if err := rows.Scan(&p.ID, &p.Descripcion); err != nil {
 			continue
 		}
 
@@ -406,7 +405,7 @@ func (h *ProjectHandler) HandleGetAvailableProjectsForUser(w http.ResponseWriter
 	}
 
 	if proyectos == nil {
-		proyectos = []models.Project{}
+		proyectos = []models.ProjectIdentification{}
 	}
 
 	utils.SendJSONSuccess(w, proyectos)
