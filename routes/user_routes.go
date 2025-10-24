@@ -14,5 +14,6 @@ func RegisterUserRoutes(router *mux.Router, db *sql.DB) {
 	router.HandleFunc("/usuario/listUsers", handler.HandleListUsers).Methods("GET")
 	router.HandleFunc("/usuario/search", handler.HandleUserQuery).Methods("GET")
 	router.HandleFunc("/usuario/delete", handler.HandleDeleteUser).Methods("POST")
-	router.HandleFunc("/usuario/edit", handler.HandleEditUser).Methods("POST")
+	router.HandleFunc("/usuario/edit", handler.HandleEditUser).Methods("POST") //
+	router.HandleFunc("/usuario/listRoles", handler.HandleListRoles).Methods("GET")
 }

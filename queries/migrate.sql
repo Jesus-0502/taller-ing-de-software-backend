@@ -1,5 +1,5 @@
 -- =============================================
--- TABLA DE ADMINISTRADORES
+-- TABLA DE USUARIOS
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS users (
@@ -9,7 +9,18 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user'
+    role INTEGER DEFAULT 5,
+
+    FOREIGN KEY (role) REFERENCES roles(id) 
+);
+
+-- =============================================
+-- TABLA DE ROLES
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULl
 );
 
 -- =============================================
@@ -56,4 +67,9 @@ CREATE TABLE IF NOT EXISTS user_projects (
 -- =============================================
 INSERT INTO users (name, lastname, username, email, password_hash, role)
 VALUES ('root', 'root', 'root','root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 'admin');
-	
+
+-- =============================================
+-- ROLES INICIALES
+-- =============================================
+INSERT INTO roles (role)
+VALUES ("Administrador"), ("Gerente"), ("Analista"), ("Vendedor"), ("Colaborador");

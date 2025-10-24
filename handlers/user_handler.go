@@ -289,6 +289,30 @@ func (h *UserHandler) HandleUserQuery(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONSuccess(w, users)
 }
 
+// HandleListRoles obtiene todos los roles registrados
+func (h *UserHandler) HandleListRoles(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.DB.Query("SELECT id, role FROM roles")
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error al consultar los roles")
+		return
+	}
+	defer rows.Close()
+
+	roles := make(map[int]string)
+
+	for rows.Next() {
+		var id int
+		var role string
+		if err := rows.Scan(&id, &role); err != nil {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error leyendo los datos de roles")
+			return
+		}
+		roles[id] = role
+	}
+
+	utils.SendJSONSuccess(w, roles)
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {
