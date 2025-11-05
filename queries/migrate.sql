@@ -146,17 +146,17 @@ VALUES ("Siembra"), ("Preparación del Suelo"), ("Riego"), ("Control de Plagas y
     cost MONEY,
     details TEXT NOT NULL DEFAULT 'Ninguna',
 
-SELECT
-    pj.id,
-    pj.activity,
-    GROUP_CONCAT(pjt.fk_tools),
-    pj.fk_farm_task,
-    pj.fk_project,
-    pj.fk_user,
-    pj.num_human_resources,
-    pj.cost,
-    pj.details
-FROM projects_data pj
-INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data
-WHERE UPPER(pj.activity) LIKE UPPER(?)
-GROUP BY pj.id;
+-- SELECT
+--     pj.id,
+--     pj.activity,
+--     GROUP_CONCAT(pjt.fk_tools),
+--     pj.fk_farm_task,
+--     pj.fk_project,
+--     pj.fk_user,
+--     pj.num_human_resources,
+--     pj.cost,
+--     pj.details
+-- FROM projects_data pj
+-- INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data
+-- WHERE UPPER(pj.activity) LIKE UPPER(?)
+-- GROUP BY pj.id;

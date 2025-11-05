@@ -140,3 +140,153 @@ func (h *ProjectDataHandler) HandleSearchProjectData(w http.ResponseWriter, r *h
 
 	utils.SendJSONSuccess(w, projectData)
 }
+
+func (h *ProjectDataHandler) HandleEditProjectData(w http.ResponseWriter, r *http.Request) {
+	var input models.ProjectData
+	var updateTable = false
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido o mal formado")
+		return
+	}
+	defer r.Body.Close()
+
+	if input.ID == 0 {
+		utils.SendJSONError(w, http.StatusBadRequest, "MISSING_ID", "El campo 'id' es obligatorio")
+		return
+	}
+
+	// Construir la query dinámicamente
+	query := "UPDATE projects_data SET "
+	args := []interface{}{}
+	updates := []string{}
+
+	if input.Actividad != "" {
+		updates = append(updates, "activity = ?")
+		args = append(args, input.Actividad)
+	}
+
+	if input.LaborAgronomica != 0 {
+		updates = append(updates, "fk_farm_task = ?")
+		args = append(args, input.LaborAgronomica)
+	}
+
+	if input.Encargado != 0 {
+		updates = append(updates, "fk_user = ?")
+		args = append(args, input.Encargado)
+	}
+	// Activar bandera para hacer cambios en la tabla intermedia
+	if len(input.Equipos) != 0 {
+		updateTable = true
+	}
+
+	if input.RecursoHumano != 0 {
+		updates = append(updates, "num_human_resources = ?")
+		args = append(args, input.RecursoHumano)
+	}
+
+	if input.Costo != 0 {
+		updates = append(updates, "cost = ?")
+		args = append(args, input.Costo)
+	}
+
+	if input.Observaciones != "" {
+		updates = append(updates, "details = ?")
+		args = append(args, input.Observaciones)
+	}
+
+	if len(updates) == 0 {
+		utils.SendJSONError(w, http.StatusBadRequest, "NO_FIELDS", "No se proporcionaron campos para actualizar")
+		return
+	}
+
+	query += strings.Join(updates, ", ") + " WHERE id = ?"
+	args = append(args, input.ID)
+
+	_, err := h.DB.Exec(query, args...)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error al actualizar los datos del proyecto")
+		return
+	}
+
+	if updateTable {
+		// Paso 1: obtener las herramientas actuales asociadas al registro
+		rows, err := h.DB.Query(`SELECT fk_tools FROM projects_data_tools WHERE fk_projects_data = ?`, input.ID)
+		if err != nil {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error obteniendo herramientas actuales")
+			return
+		}
+		defer rows.Close()
+
+		var currentTools []int64
+		for rows.Next() {
+			var toolID int64
+			rows.Scan(&toolID)
+			currentTools = append(currentTools, toolID)
+		}
+
+		// Paso 2: crear mapas para comparar rápidamente
+		currentSet := make(map[int64]bool)
+		for _, id := range currentTools {
+			currentSet[id] = true
+		}
+
+		newSet := make(map[int64]bool)
+		for _, id := range input.Equipos {
+			newSet[id] = true
+		}
+
+		// Paso 3: determinar qué eliminar y qué agregar
+		var toDelete []int64
+		var toAdd []int64
+
+		for id := range currentSet {
+			if !newSet[id] {
+				toDelete = append(toDelete, id)
+			}
+		}
+
+		for id := range newSet {
+			if !currentSet[id] {
+				toAdd = append(toAdd, id)
+			}
+		}
+
+		// Paso 4: iniciar transacción (opcional, pero recomendado)
+		tx, err := h.DB.Begin()
+		if err != nil {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error iniciando transacción")
+			return
+		}
+
+		// Paso 5: eliminar las relaciones que ya no existen
+		for _, id := range toDelete {
+			_, err := tx.Exec(`DELETE FROM projects_data_tools WHERE fk_projects_data = ? AND fk_tools = ?`, input.ID, id)
+			if err != nil {
+				tx.Rollback()
+				utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error eliminando herramientas anteriores")
+				return
+			}
+		}
+
+		// Paso 6: agregar las nuevas relaciones
+		for _, id := range toAdd {
+			_, err := tx.Exec(`INSERT INTO projects_data_tools (fk_projects_data, fk_tools) VALUES (?, ?)`, input.ID, id)
+			if err != nil {
+				tx.Rollback()
+				utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error agregando nuevas herramientas")
+				return
+			}
+		}
+
+		// Paso 7: confirmar cambios
+		if err := tx.Commit(); err != nil {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error confirmando cambios en herramientas")
+			return
+		}
+	}
+
+	utils.SendJSONSuccess(w, map[string]string{
+		"message": "Proyecto actualizado correctamente",
+	})
+}
