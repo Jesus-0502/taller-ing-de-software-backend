@@ -8,7 +8,7 @@ import (
 )
 
 func RegisterFarmTasksRoutes(router *mux.Router, db *sql.DB) {
-	handler := handlers.NewFarmTasksHandlerHandler(db)
+	handler := handlers.NewFarmTasksHandler(db)
 
 	// router.HandleFunc("/farm_tasks", handler.HandleListFarmTasks).Methods("GET")
 	router.HandleFunc("/farm_tasks", handler.HandleAddFarmTask).Methods("POST")

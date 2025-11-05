@@ -15,7 +15,7 @@ type FarmTasksHandler struct {
 	DB *sql.DB
 }
 
-func NewFarmTasksHandlerHandler(db *sql.DB) *FarmTasksHandler {
+func NewFarmTasksHandler(db *sql.DB) *FarmTasksHandler {
 	return &FarmTasksHandler{DB: db}
 }
 

@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS projects_data_tools (
     fk_tools INTEGER,
 
     FOREIGN KEY (fk_tools) REFERENCES tools(id),
-    FOREIGN KEY (fk_projects_data) REFERENCES projects_data(id)
+    FOREIGN KEY (fk_projects_data) REFERENCES projects_data(id) ON DELETE CASCADE
 );
 
 
