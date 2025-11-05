@@ -325,7 +325,7 @@ func contains(s, sub string) bool {
 func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 	var input models.User
 
-	// 1️⃣ Decodificar JSON de entrada
+	// Decodificar JSON de entrada
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
 		return
@@ -337,7 +337,7 @@ func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2️⃣ Buscar usuario actual en BD
+	// Buscar usuario actual en BD
 	var dbUser models.User
 	err := h.DB.QueryRow(`
 		SELECT id, name, lastname, username, email, password_hash, role
@@ -355,7 +355,7 @@ func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3️⃣ Comparar y construir dinámicamente la sentencia UPDATE
+	// Comparar y construir dinámicamente la sentencia UPDATE
 	updateFields := []string{}
 	args := []interface{}{}
 
@@ -380,13 +380,13 @@ func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 		args = append(args, input.Role)
 	}
 
-	// 4️⃣ Si no hay cambios, devolver mensaje
+	// Si no hay cambios, devolver mensaje
 	if len(updateFields) == 0 {
 		utils.SendJSONSuccess(w, map[string]string{"message": "No se realizaron cambios"})
 		return
 	}
 
-	// 5️⃣ Ejecutar actualización dinámica
+	// Ejecutar actualización dinámica
 	query := fmt.Sprintf("UPDATE users SET %s WHERE id = ?", strings.Join(updateFields, ", "))
 	args = append(args, input.ID)
 
@@ -396,7 +396,7 @@ func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 6️⃣ Devolver usuario actualizado (merge entre original y cambios)
+	// Devolver usuario actualizado (merge entre original y cambios)
 	if input.Name != "" {
 		dbUser.Name = input.Name
 	}

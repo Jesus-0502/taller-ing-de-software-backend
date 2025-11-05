@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"farmlands-backend/models"
 	"farmlands-backend/utils"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type ToolsHandler struct {
@@ -83,9 +85,94 @@ func (h *ToolsHandler) HandleAddTool(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONSuccess(w, tool)
 }
 
-// func (h *ToolsHandler) HandleEditTool(w http.ResponseWriter, r *http.Request)
+func (h *ToolsHandler) HandleEditTool(w http.ResponseWriter, r *http.Request) {
+	var input models.Tool
 
-// func (h *ToolsHandler) HandleDeleteTool(w http.ResponseWriter, r *http.Request)
+	// Decodificar JSON de entrada
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
+		return
+	}
+
+	// Validar que venga el ID
+	if input.ID == 0 {
+		utils.SendJSONError(w, http.StatusBadRequest, "MISSING_ID", "El ID de la herramienta es obligatorio")
+		return
+	}
+
+	// Buscar suplemento actual en BD
+	var dbTool models.Tool
+	err := h.DB.QueryRow(`
+		SELECT id, descripcion
+		FROM tools WHERE id = ?`, input.ID,
+	).Scan(
+		&dbTool.ID, &dbTool.Descripcion,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.SendJSONError(w, http.StatusNotFound, "TOOL_NOT_FOUND", "Suplemento no encontrado")
+			return
+		}
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error consultando suplemento")
+		return
+	}
+
+	// Comparar y construir dinámicamente la sentencia UPDATE
+	updateFields := []string{}
+	args := []interface{}{}
+
+	if input.Descripcion != "" && input.Descripcion != dbTool.Descripcion {
+		updateFields = append(updateFields, "descripcion = ?")
+		args = append(args, input.Descripcion)
+	}
+
+	// Si no hay cambios, devolver mensaje
+	if len(updateFields) == 0 {
+		utils.SendJSONSuccess(w, map[string]string{"message": "No se realizaron cambios"})
+		return
+	}
+
+	// Ejecutar actualización dinámica
+	query := fmt.Sprintf("UPDATE tools SET %s WHERE id = ?", strings.Join(updateFields, ", "))
+	args = append(args, input.ID)
+
+	_, err = h.DB.Exec(query, args...)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_UPDATE_ERROR", "Error actualizando suplemento")
+		return
+	}
+
+	// Devolver tool actualizado
+	if input.Descripcion != "" {
+		dbTool.Descripcion = input.Descripcion
+	}
+
+	utils.SendJSONSuccess(w, dbTool)
+}
+
+func (h *ToolsHandler) HandleDeleteTool(w http.ResponseWriter, r *http.Request) {
+	var input models.ToolID
+
+	// Decodificar JSON de entrada
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
+		return
+	}
+
+	res, err := h.DB.Exec("DELETE FROM tools WHERE id = ?", input.ID)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error eliminando suplemento")
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		utils.SendJSONError(w, http.StatusNotFound, "NOT_FOUND", "Suplemento no encontrado")
+		return
+	}
+
+	utils.SendJSONSuccess(w, "Suplemento eliminado correctamente")
+}
 
 func (h *ToolsHandler) HandleSearchTool(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q") // texto buscado

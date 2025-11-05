@@ -6,6 +6,10 @@ type Tool struct {
 	Descripcion string `json:"descripcion"`
 }
 
+type ToolID struct {
+	ID int64 `json:"id"`
+}
+
 type AddTool struct {
 	Descripcion string `json:"descripcion"`
 }

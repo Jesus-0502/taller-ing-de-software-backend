@@ -13,4 +13,6 @@ func RegisterToolsRoutes(router *mux.Router, db *sql.DB) {
 	// router.HandleFunc("/tools", handler.HandleListTools).Methods("GET")
 	router.HandleFunc("/tools", handler.HandleAddTool).Methods("POST")
 	router.HandleFunc("/tools", handler.HandleSearchTool).Methods("GET")
+	router.HandleFunc("/tools/edit", handler.HandleEditTool).Methods("POST")
+	router.HandleFunc("/tools/delete", handler.HandleDeleteTool).Methods("POST")
 }
