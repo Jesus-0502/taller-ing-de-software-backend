@@ -6,6 +6,7 @@ type ProjectData struct {
 	Actividad       string  `json:"actividad"`
 	LaborAgronomica int64   `json:"laborAgronomica"`
 	Encargado       int64   `json:"encargado"`
+	Equipos         []int64 `json:"equipos"`
 	RecursoHumano   int64   `json:"recursoHumano"`
 	Costo           float64 `json:"costo"`
 	Observaciones   string  `json:"observaciones"`

@@ -7,6 +7,8 @@ import (
 	"farmlands-backend/utils"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 type ProjectDataHandler struct {
@@ -91,4 +93,50 @@ func (h *ProjectDataHandler) HandleDeleteProjectData(w http.ResponseWriter, r *h
 	}
 
 	utils.SendJSONSuccess(w, "Datos del proyecto eliminado correctamente")
+}
+
+func (h *ProjectDataHandler) HandleSearchProjectData(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q") // texto buscado
+
+	// Si no hay query, devolvemos todos los suplementos
+	var rows *sql.Rows
+	var err error
+	if query == "" {
+		rows, err = h.DB.Query(
+			"SELECT pj.id, pj.activity, pj.fk_farm_task, pj.fk_user, GROUP_CONCAT(pjt.fk_tools), pj.num_human_resources, pj.cost, pj.details FROM projects_data pj INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data GROUP BY pj.id")
+	} else {
+		rows, err = h.DB.Query(
+			"SELECT pj.id, pj.activity, pj.fk_farm_task, pj.fk_user, GROUP_CONCAT(pjt.fk_tools), pj.num_human_resources, pj.cost, pj.details FROM projects_data pj INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data WHERE UPPER(pj.activity) LIKE UPPER(?) GROUP BY pj.id",
+			"%"+query+"%",
+		)
+	}
+
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error en la búsqueda")
+		return
+	}
+	defer rows.Close()
+
+	var projectData []models.ProjectData
+	var tmp string
+
+	for rows.Next() {
+		var pj models.ProjectData
+		if err := rows.Scan(&pj.ID, &pj.Actividad, &pj.LaborAgronomica, &pj.Encargado, &tmp, &pj.RecursoHumano, &pj.Costo, &pj.Observaciones); err != nil {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error leyendo resultados")
+			return
+		}
+		if tmp != "" {
+			parts := strings.Split(tmp, ",")
+			for _, p := range parts {
+				n, err := strconv.ParseInt(p, 10, 64)
+				if err == nil {
+					pj.Equipos = append(pj.Equipos, n)
+				}
+			}
+		}
+		projectData = append(projectData, pj)
+	}
+
+	utils.SendJSONSuccess(w, projectData)
 }
