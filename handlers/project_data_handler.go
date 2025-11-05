@@ -68,3 +68,27 @@ func (h *ProjectDataHandler) HandleNewProjectData(w http.ResponseWriter, r *http
 
 	utils.SendJSONSuccess(w, projectData)
 }
+
+func (h *ProjectDataHandler) HandleDeleteProjectData(w http.ResponseWriter, r *http.Request) {
+	var input models.ProjectDataID
+
+	// Decodificar JSON de entrada
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido")
+		return
+	}
+
+	res, err := h.DB.Exec("DELETE FROM projects_data WHERE id = ?", input.ID)
+	if err != nil {
+		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error eliminando datos del proyecto")
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		utils.SendJSONError(w, http.StatusNotFound, "NOT_FOUND", "Datos del proyecto no encontrados")
+		return
+	}
+
+	utils.SendJSONSuccess(w, "Datos del proyecto eliminado correctamente")
+}

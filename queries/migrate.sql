@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS projects_data (
     details TEXT NOT NULL DEFAULT 'Ninguna',
 
     FOREIGN KEY (fk_farm_task) REFERENCES farm_tasks(id),
-    FOREIGN KEY (fk_project) REFERENCES projects(id),
+    FOREIGN KEY (fk_project) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (fk_user) REFERENCES users(id)
 );
 

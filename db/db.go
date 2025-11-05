@@ -190,5 +190,7 @@ INSERT INTO farm_tasks (descripcion)
 VALUES ("Siembra"), ("Preparación del Suelo"), ("Riego"), ("Control de Plagas y Enfermedades"), ("Cosecha");
 	`
 	_, err := db.Exec(schema)
+	db.Exec("PRAGMA foreign_keys = ON;")
+
 	return err
 }
