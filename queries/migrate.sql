@@ -138,13 +138,6 @@ VALUES ("Hacha"), ("Desmalezadora"), ("Machete"), ("Motosierra");
 INSERT INTO farm_tasks (descripcion)
 VALUES ("Siembra"), ("Preparación del Suelo"), ("Riego"), ("Control de Plagas y Enfermedades"), ("Cosecha");
 
--- =============================================
--- PROYECTOS INICIALES
--- =============================================
-INSERT INTO projects (descripcion, fecha_inicio, fecha_cierre)
-VALUES ('Proy 1', '3-3-3', '3-3-3'), 
-('Proy 2', '3-3-3', '3-3-3'), 
-('Proy 3', '3-3-3', '3-3-3');
 
 
 -- SELECT

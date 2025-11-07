@@ -190,30 +190,6 @@ VALUES ("Hacha"), ("Desmalezadora"), ("Machete"), ("Motosierra");
 -- =============================================
 INSERT INTO farm_tasks (descripcion)
 VALUES ("Siembra"), ("Preparación del Suelo"), ("Riego"), ("Control de Plagas y Enfermedades"), ("Cosecha");
-
--- =============================================
--- PROYECTOS INICIALES
--- =============================================
-INSERT INTO projects (descripcion, fecha_inicio, fecha_cierre)
-VALUES ('Proy 1', '3-3-3', '3-3-3'), 
-('Proy 2', '3-3-3', '3-3-3'), 
-('Proy 3', '3-3-3', '3-3-3');
-
-
--- SELECT
---     pj.id,
---     pj.activity,
---     GROUP_CONCAT(pjt.fk_tools),
---     pj.fk_farm_task,
---     pj.fk_project,
---     pj.fk_user,
---     pj.num_human_resources,
---     pj.cost,
---     pj.details
--- FROM projects_data pj
--- INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data
--- WHERE UPPER(pj.activity) LIKE UPPER(?)
--- GROUP BY pj.id;
 	`
 	_, err := db.Exec(schema)
 	db.Exec("PRAGMA foreign_keys = ON;")
