@@ -27,20 +27,20 @@ func NewUserHandler(db *sql.DB) *UserHandler {
 func (h *UserHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 
 	// Consulta a la base de datos
-	rows, err := h.DB.Query("SELECT id, name, lastname, username, email, role FROM users")
+	rows, err := h.DB.Query("SELECT id, ci, name, lastname, username, email, role FROM users")
 	if err != nil {
 		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error interno del servidor")
 		return
 	}
 	defer rows.Close()
 
-	var users []models.User
+	var users []models.UserFullData
 
 	// Iterar sobre los resultados
 	for rows.Next() {
-		var u models.User
+		var u models.UserFullData
 
-		if err := rows.Scan(&u.ID, &u.Name, &u.Lastname, &u.Username, &u.Email, &u.Role); err != nil {
+		if err := rows.Scan(&u.ID, &u.CI, &u.Name, &u.Lastname, &u.Username, &u.Email, &u.Role); err != nil {
 			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error leyendo los datos")
 			return
 		}
@@ -61,7 +61,7 @@ func (h *UserHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if users == nil {
-		users = []models.User{}
+		users = []models.UserFullData{}
 	}
 
 	utils.SendJSONSuccess(w, users)
@@ -187,23 +187,24 @@ func (h *UserHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 
 	// === Insertar nuevo usuario ===
 	stmt := `
-		INSERT INTO users (name, lastname, username, email, password_hash, role)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO users (ci, name, lastname, username, email, password_hash, role)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 	role := input.Role
 	if role == "" {
 		role = "user"
 	}
 
-	res, err := h.DB.Exec(stmt, input.Name, input.Lastname, input.Username, input.Email, string(hash), role)
+	res, err := h.DB.Exec(stmt, input.CI, input.Name, input.Lastname, input.Username, input.Email, string(hash), role)
 	if err != nil {
 		utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error al registrar usuario")
 		return
 	}
 
 	id, _ := res.LastInsertId()
-	user := models.User{
+	user := models.UserFullData{
 		ID:       id,
+		CI: 	  input.CI,
 		Name:     input.Name,
 		Lastname: input.Lastname,
 		Username: input.Username,
@@ -323,7 +324,7 @@ func contains(s, sub string) bool {
 }
 
 func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
-	var input models.User
+	var input models.UserFullData
 
 	// Decodificar JSON de entrada
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -338,13 +339,13 @@ func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Buscar usuario actual en BD
-	var dbUser models.User
+	var dbUser models.UserFullData
 	err := h.DB.QueryRow(`
-		SELECT id, name, lastname, username, email, password_hash, role
+		SELECT id, name, lastname, username, email, password_hash, role, ci
 		FROM users WHERE id = ?`, input.ID,
 	).Scan(
 		&dbUser.ID, &dbUser.Name, &dbUser.Lastname, &dbUser.Username,
-		&dbUser.Email, &dbUser.PasswordHash, &dbUser.Role,
+		&dbUser.Email, &dbUser.PasswordHash, &dbUser.Role, &dbUser.CI,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -379,6 +380,10 @@ func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 		updateFields = append(updateFields, "role = ?")
 		args = append(args, input.Role)
 	}
+	if input.CI != "" && input.CI != dbUser.CI {
+		updateFields = append(updateFields, "ci = ?")
+		args = append(args, input.CI)
+	}
 
 	// Si no hay cambios, devolver mensaje
 	if len(updateFields) == 0 {
@@ -411,6 +416,9 @@ func (h *UserHandler) HandleEditUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if input.Role != "" {
 		dbUser.Role = input.Role
+	}
+	if input.CI != "" {
+		dbUser.CI = input.CI
 	}
 
 	utils.SendJSONSuccess(w, dbUser)
