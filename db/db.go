@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS user_projects (
 -- USUARIO ADMINISTRADOR INICIAL
 -- =============================================
 INSERT INTO users (name, lastname, username, email, password_hash, role)
-VALUES ('root', 'root', 'root','root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 'admin');
+VALUES ('root', 'root', 'root','root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 1);
 
 -- =============================================
 -- ROLES INICIALES
