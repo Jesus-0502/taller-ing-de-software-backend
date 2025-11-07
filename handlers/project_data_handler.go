@@ -297,3 +297,48 @@ func (h *ProjectDataHandler) HandleEditProjectData(w http.ResponseWriter, r *htt
 		"message": "Proyecto actualizado correctamente",
 	})
 }
+
+func (h *ProjectDataHandler) HandleGetSupervisorProjectData(w http.ResponseWriter, r *http.Request) {
+	var input models.ProjectDataSupervisorID
+	// Decodificar el JSON recibido
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_JSON", "JSON inválido o mal formado")
+		return
+	}
+	defer r.Body.Close()
+
+	// Validar que venga un ID
+	if input.ID == 0 {
+		utils.SendJSONError(w, http.StatusBadRequest, "MISSING_ID", "El campo 'id' es obligatorio")
+		return
+	}
+
+	// Query para obtener los datos del usuario supervisor
+	query := `
+		SELECT ci, name, lastname
+		FROM users
+		WHERE id = ?;
+	`
+
+	row := h.DB.QueryRow(query, input.ID)
+
+	// Estructura para devolver los datos
+	var supervisor struct {
+		Cedula   string `json:"ci"`
+		Nombre   string `json:"name"`
+		Apellido string `json:"lastname"`
+	}
+
+	// Escanear los datos
+	if err := row.Scan(&supervisor.Cedula, &supervisor.Nombre, &supervisor.Apellido); err != nil {
+		if err == sql.ErrNoRows {
+			utils.SendJSONError(w, http.StatusNotFound, "NOT_FOUND", "No existe un usuario con ese ID")
+		} else {
+			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error al consultar los datos del supervisor")
+		}
+		return
+	}
+
+	// Enviar respuesta
+	utils.SendJSONSuccess(w, supervisor)
+}

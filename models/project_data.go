@@ -26,3 +26,7 @@ type AddProjectData struct {
 	Costo           float64 `json:"costo"`
 	Observaciones   string  `json:"observaciones"`
 }
+
+type ProjectDataSupervisorID struct {
+	ID int64 `json:"idSupervisor"`
+}

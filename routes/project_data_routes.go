@@ -14,4 +14,5 @@ func RegisterProjectDataRoutes(router *mux.Router, db *sql.DB) {
 	router.HandleFunc("/project_data", handler.HandleSearchProjectData).Methods("GET")
 	router.HandleFunc("/project_data/edit", handler.HandleEditProjectData).Methods("POST")
 	router.HandleFunc("/project_data/delete", handler.HandleDeleteProjectData).Methods("POST")
+	router.HandleFunc("/project_data/supervisor", handler.HandleGetSupervisorProjectData).Methods("POST")
 }

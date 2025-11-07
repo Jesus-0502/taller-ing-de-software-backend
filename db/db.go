@@ -58,7 +58,7 @@ func migrate(db *sql.DB) error {
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    ci TEXT,
+    ci TEXT DEFAULT '0',
     lastname TEXT NOT NULL,
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS projects_data (
     details TEXT NOT NULL DEFAULT 'Ninguna',
 
     FOREIGN KEY (fk_farm_task) REFERENCES farm_tasks(id),
-    FOREIGN KEY (fk_project) REFERENCES projects(id),
+    FOREIGN KEY (fk_project) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (fk_user) REFERENCES users(id)
 );
 
@@ -166,10 +166,12 @@ CREATE TABLE IF NOT EXISTS user_projects (
 
 
 -- =============================================
--- USUARIO ADMINISTRADOR INICIAL
+-- USUARIO ADMINISTRADOR INICIAL Y TRABAJADORES INICIALES
 -- =============================================
-INSERT INTO users (name, lastname, username, email, password_hash, role)
-VALUES ('root', 'root', 'root','root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 1);
+INSERT INTO users (username, name, lastname, email, password_hash, role, ci)
+VALUES ('root', 'root', 'root','root@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 1, '0'),
+('arcargotte', 'Alan', 'Argotte','alan@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 1, 'V-29765711'), 
+('yisus', 'Jesus', 'Gutierrez','jesus@example.com', '$2a$10$.e2jTOtVHftDwmE5N2ig2eCvkMKzF3Y8UZu3Qg9t4NwzwLUlrh.Ou', 1, 'V-29765712');
 
 -- =============================================
 -- ROLES INICIALES
@@ -188,6 +190,30 @@ VALUES ("Hacha"), ("Desmalezadora"), ("Machete"), ("Motosierra");
 -- =============================================
 INSERT INTO farm_tasks (descripcion)
 VALUES ("Siembra"), ("Preparación del Suelo"), ("Riego"), ("Control de Plagas y Enfermedades"), ("Cosecha");
+
+-- =============================================
+-- PROYECTOS INICIALES
+-- =============================================
+INSERT INTO projects (descripcion, fecha_inicio, fecha_cierre)
+VALUES ('Proy 1', '3-3-3', '3-3-3'), 
+('Proy 2', '3-3-3', '3-3-3'), 
+('Proy 3', '3-3-3', '3-3-3');
+
+
+-- SELECT
+--     pj.id,
+--     pj.activity,
+--     GROUP_CONCAT(pjt.fk_tools),
+--     pj.fk_farm_task,
+--     pj.fk_project,
+--     pj.fk_user,
+--     pj.num_human_resources,
+--     pj.cost,
+--     pj.details
+-- FROM projects_data pj
+-- INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data
+-- WHERE UPPER(pj.activity) LIKE UPPER(?)
+-- GROUP BY pj.id;
 	`
 	_, err := db.Exec(schema)
 	db.Exec("PRAGMA foreign_keys = ON;")
