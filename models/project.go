@@ -10,6 +10,10 @@ type Project struct {
 	CreatedAt   string `json:"created_at"`
 }
 
+type ProjectID struct {
+	ID int64 `json:"id"`
+}
+
 type ProjectIdentification struct {
 	ID          int64  `json:"id"`
 	Descripcion string `json:"descripcion"`

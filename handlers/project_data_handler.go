@@ -97,18 +97,22 @@ func (h *ProjectDataHandler) HandleDeleteProjectData(w http.ResponseWriter, r *h
 
 func (h *ProjectDataHandler) HandleSearchProjectData(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q") // texto buscado
-
+	idStr := r.URL.Query().Get("i")
+	id, errConv := strconv.ParseInt(idStr, 10, 64)
+	if errConv != nil {
+		utils.SendJSONError(w, http.StatusBadRequest, "INVALID_ID", "El parámetro 'i' debe ser numérico")
+		return
+	}
 	// Si no hay query, devolvemos todos los suplementos
 	var rows *sql.Rows
 	var err error
 	if query == "" {
 		rows, err = h.DB.Query(
-			"SELECT pj.id, pj.activity, pj.fk_farm_task, pj.fk_user, GROUP_CONCAT(pjt.fk_tools), pj.num_human_resources, pj.cost, pj.details FROM projects_data pj INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data GROUP BY pj.id")
+			"SELECT pj.id, pj.activity, pj.fk_farm_task, pj.fk_user, GROUP_CONCAT(pjt.fk_tools), pj.num_human_resources, pj.cost, pj.details FROM projects_data pj LEFT JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data WHERE pj.fk_project = ? GROUP BY pj.id", id)
 	} else {
 		rows, err = h.DB.Query(
-			"SELECT pj.id, pj.activity, pj.fk_farm_task, pj.fk_user, GROUP_CONCAT(pjt.fk_tools), pj.num_human_resources, pj.cost, pj.details FROM projects_data pj INNER JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data WHERE UPPER(pj.activity) LIKE UPPER(?) GROUP BY pj.id",
-			"%"+query+"%",
-		)
+			"SELECT pj.id, pj.activity, pj.fk_farm_task, pj.fk_user, GROUP_CONCAT(pjt.fk_tools), pj.num_human_resources, pj.cost, pj.details FROM projects_data pj LEFT JOIN projects_data_tools pjt ON pj.id == pjt.fk_projects_data WHERE UPPER(pj.activity) LIKE UPPER(?) AND pj.fk_project = ? GROUP BY pj.id",
+			"%"+query+"%", id)
 	}
 
 	if err != nil {
@@ -118,7 +122,7 @@ func (h *ProjectDataHandler) HandleSearchProjectData(w http.ResponseWriter, r *h
 	defer rows.Close()
 
 	var projectData []models.ProjectData
-	var tmp string
+	var tmp sql.NullString
 
 	for rows.Next() {
 		var pj models.ProjectData
@@ -126,16 +130,19 @@ func (h *ProjectDataHandler) HandleSearchProjectData(w http.ResponseWriter, r *h
 			utils.SendJSONError(w, http.StatusInternalServerError, "DB_ERROR", "Error leyendo resultados")
 			return
 		}
-		if tmp != "" {
-			parts := strings.Split(tmp, ",")
+		if tmp.Valid && tmp.String != "" {
+			parts := strings.Split(tmp.String, ",")
 			for _, p := range parts {
 				n, err := strconv.ParseInt(p, 10, 64)
 				if err == nil {
 					pj.Equipos = append(pj.Equipos, n)
 				}
 			}
+		} else {
+			pj.Equipos = []int64{}
 		}
 		projectData = append(projectData, pj)
+		// log.Println(len(projectData))
 	}
 
 	utils.SendJSONSuccess(w, projectData)

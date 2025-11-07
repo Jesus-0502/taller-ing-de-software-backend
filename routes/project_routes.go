@@ -22,5 +22,4 @@ func RegisterProjectRoutes(router *mux.Router, db *sql.DB) {
 	router.HandleFunc("/proyectos/asignar", handler.HandleAssignUserToProject).Methods("POST")
 	router.HandleFunc("/proyectos/changeAssociation", handler.HandleChangeAssociation).Methods("POST")
 	router.HandleFunc("/proyectos/removeAssociation", handler.HandleRemoveAssociation).Methods("POST")
-
 }
